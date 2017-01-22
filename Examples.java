@@ -113,14 +113,13 @@ public class Examples {
           //change domain and range
           String[] z;
           z = ranges.clone();
-          ranges = Arrays.copyOfRange(domains, 0, domains.length); //fill(domains, 0, ranges.length, val); domains.clone()
+          ranges = Arrays.copyOfRange(domains, 0, domains.length); 
           domains = z;
           boaBug = true;
         }
         
       }
        
-      //Stringrelation triple = new String[3];
       for (int k = 0; k < domains.length; k++){
         if (domains[k] == null)
           break;
@@ -135,7 +134,7 @@ public class Examples {
         //change domain and range back...
         String[] z;
         z = ranges.clone();
-        ranges = Arrays.copyOfRange(domains, 0, domains.length); //fill(domains, 0, ranges.length, val); domains.clone()
+        ranges = Arrays.copyOfRange(domains, 0, domains.length); 
         ranges = z;
       }
 
@@ -158,7 +157,6 @@ public class Examples {
     fox.setOutputFormat(FoxParameter.OUTPUT.TURTLE);
     fox.setLang(FoxParameter.LANG.EN);
     fox.setInput(s);
-    // fox.setLightVersion(FoxParameter.FOXLIGHT.ENStanford);
 
     FoxResponse response = fox.send();
 
@@ -220,11 +218,10 @@ public class Examples {
   
   public static String[] sparqleQuery(String s[],  HashMap<String, String> hmap) {
 
-    String classes[] = new String[5]; //Rueckgabe-Variable, z.B. http://dbpedia.org/page/Leipzig kann "Place", wie auch "PopulatedPlace" sein
+    String classes[] = new String[5]; //Rueckgabe-Variable, z.B. http://dbpedia.org/page/Leipzig, kann "Place", wie auch "PopulatedPlace" sein
     int arrayIndex = 0;
 
     for (int k = 0; k < s.length; k++){
-      //s = "<http://dbpedia.org/resource/" + s + "> ";
       ParameterizedSparqlString qs = new ParameterizedSparqlString(
           "prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n"
               + "SELECT ?v \n FROM <http://dbpedia.org>"
@@ -308,7 +305,7 @@ public class Examples {
   
   public static String[] luceneQuery(String entities[], int schalter, String satz) throws IOException, ParseException {
     
-    File path = new File(boaPath);//"/Users/David/Desktop/iConnect/boa_en_10"
+    File path = new File(boaPath);
     Directory index = FSDirectory.open(path);
     
     String[] returnString = new String[5];
@@ -368,7 +365,7 @@ public class Examples {
   public static String getRelation(String domain, String range, String nlr_relation) throws IOException, ParseException{
 
     Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_47);
-    File path = new File(boaPath);//
+    File path = new File(boaPath);
     Directory index = FSDirectory.open(path);    
     // Query 
     MultiFieldQueryParser queryParser = new MultiFieldQueryParser(Version.LUCENE_47, new String[] {"domain","nlr-no-var","range"}, analyzer);
@@ -387,7 +384,7 @@ public class Examples {
     for (int i = 0; i < hits.length; ++i) {
       int docId = hits[i].doc;
       d = searcher.doc(docId);
-      if (nlr_relation.toLowerCase().contains(d.get("nlr-no-var").toLowerCase())){ //d.get("nlr-no-var").toLowerCase().contains(nlr_relation.toLowerCase())
+      if (nlr_relation.toLowerCase().contains(d.get("nlr-no-var").toLowerCase())){ 
         score.add(Double.parseDouble(d.get("SUPPORT_NUMBER_OF_PAIRS_LEARNED_FROM")));
         relations_uri.put(Double.parseDouble(d.get("SUPPORT_NUMBER_OF_PAIRS_LEARNED_FROM")), d.get("uri"));
         entityDomain = d.get("domain");
