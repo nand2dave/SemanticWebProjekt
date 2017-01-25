@@ -1,4 +1,5 @@
-package org.aksw.fox.binding.java;
+package SWP.org.aksw.iConnect;
+
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -14,6 +15,10 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.aksw.fox.binding.java.FoxApi;
+import org.aksw.fox.binding.java.FoxParameter;
+import org.aksw.fox.binding.java.FoxResponse;
+import org.aksw.fox.binding.java.IFoxApi;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -31,6 +36,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
+import org.apache.jena.riot.Lang;
 
 import com.hp.hpl.jena.query.ParameterizedSparqlString;
 import com.hp.hpl.jena.query.QueryExecution;
@@ -41,7 +47,8 @@ import com.hp.hpl.jena.query.ResultSetFormatter;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
 
-public class Examples {
+
+public class App {
 
   public static String entityDomain, entityRange, relation, boaPath;
   
@@ -139,9 +146,9 @@ public class Examples {
       }
 
       //output triple as RDF
-      com.hp.hpl.jena.rdf.model.Resource subject = model.createResource("dbp:"+ mapClassIndividual.get(entityDomain).substring(mapClassIndividual.get(entityDomain).lastIndexOf("/")));//("dbp:"+ entities[0]);
-      com.hp.hpl.jena.rdf.model.Resource object = model.createResource("dbp:" + mapClassIndividual.get(entityRange).substring(mapClassIndividual.get(entityDomain).lastIndexOf("/")));
-      com.hp.hpl.jena.rdf.model.Property predicate = model.createProperty("dbp:" + relation);
+      com.hp.hpl.jena.rdf.model.Resource subject = model.createResource(mapClassIndividual.get(entityDomain));
+      com.hp.hpl.jena.rdf.model.Resource object = model.createResource(mapClassIndividual.get(entityRange));
+      com.hp.hpl.jena.rdf.model.Property predicate = model.createProperty(relation);
       model.add(subject, predicate, object);
       
     }
@@ -160,9 +167,9 @@ public class Examples {
 
     FoxResponse response = fox.send();
 
-    //URIs der Entitaeten (aus FOX-response) in String-Array speichern
+    //save URIs of entities in String Arrays
     String[] entities = response.getOutput().split("\n");
-    String results[] = new String[5]; //Fuer 5 Entitaeten
+    String results[] = new String[5]; //for up to 5 entities
     ArrayList<String> result  = new ArrayList<String>();
 
     //get entities
@@ -184,7 +191,7 @@ public class Examples {
       for(int i=0; i < results.length; i++)
         System.out.println(results[i]);      
     }
-    //get start and end indices from the entities
+    //get start and end indices from the entities in input string
     int beginIndex[] = new int[5]; 
     int endIndex[] = new int[5];
 
@@ -218,7 +225,7 @@ public class Examples {
   
   public static String[] sparqleQuery(String s[],  HashMap<String, String> hmap) {
 
-    String classes[] = new String[5]; //Rueckgabe-Variable, z.B. http://dbpedia.org/page/Leipzig, kann "Place", wie auch "PopulatedPlace" sein
+    String classes[] = new String[5]; //return variable, i.e. http://dbpedia.org/page/Leipzig is a "Place" or "PopulatedPlace"
     int arrayIndex = 0;
 
     for (int k = 0; k < s.length; k++){
@@ -384,7 +391,7 @@ public class Examples {
     for (int i = 0; i < hits.length; ++i) {
       int docId = hits[i].doc;
       d = searcher.doc(docId);
-      if (nlr_relation.toLowerCase().contains(d.get("nlr-no-var").toLowerCase())){ 
+      if (nlr_relation.toLowerCase().contains(d.get("nlr-no-var").toLowerCase())){ //d.get("nlr-no-var").toLowerCase().contains(nlr_relation.toLowerCase())
         score.add(Double.parseDouble(d.get("SUPPORT_NUMBER_OF_PAIRS_LEARNED_FROM")));
         relations_uri.put(Double.parseDouble(d.get("SUPPORT_NUMBER_OF_PAIRS_LEARNED_FROM")), d.get("uri"));
         entityDomain = d.get("domain");
