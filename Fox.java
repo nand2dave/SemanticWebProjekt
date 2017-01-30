@@ -76,7 +76,7 @@ public class Fox {
     this.entities = results;
   }
   
-  public static int indexOf(Pattern pattern, String s) {
+  public int indexOf(Pattern pattern, String s) {
     Matcher matcher = pattern.matcher(s);
     return matcher.find() ? matcher.start() : -1;
   }
