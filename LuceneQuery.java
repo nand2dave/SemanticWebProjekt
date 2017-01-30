@@ -69,7 +69,7 @@ public class LuceneQuery {
     this.entities = returnString;
   }
   
-  public static Document queryParser(TermQuery q, Directory index, String satz) throws IOException, ParseException, NullPointerException {
+  public Document queryParser(TermQuery q, Directory index, String satz) throws IOException, ParseException, NullPointerException {
 
     // search
     int hitsPerPage = 10;
