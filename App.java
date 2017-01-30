@@ -51,9 +51,11 @@ import com.hp.hpl.jena.rdf.model.ModelFactory;
 
 public class App {
 
-  public static String entityDomain, entityRange, relation, boaPath, filePath;
+  public static String boaPath, filePath;
   
   public static void main(String[] a) throws Exception {
+    
+    String entityDomain, entityRange, relation;
     
     //initializations for RDF output...
     Model model = ModelFactory.createDefaultModel() ;
@@ -68,7 +70,7 @@ public class App {
     System.out.println("Pfad der Text-Datei eingeben: ");
     filePath = br.readLine();
     filePath = filePath.replace("\"", "");//if given path string contains "-characters
-    String s = new Scanner(new File(filePath)).useDelimiter("\\Z").next();//get text from text file
+    String s = new Scanner(new File(filePath)).useDelimiter("\\Z").next();
     String saetze[] = s.split("\\."); //Split sentences by "."
 
     Fox fox;
