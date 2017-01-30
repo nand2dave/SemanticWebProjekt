@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -50,11 +51,11 @@ import com.hp.hpl.jena.rdf.model.ModelFactory;
 
 public class App {
 
-  public static String entityDomain, entityRange, relation, boaPath;
+  public static String entityDomain, entityRange, relation, boaPath, filePath;
   
   public static void main(String[] a) throws Exception {
     
-    //initialisations for RDF output...
+    //initializations for RDF output...
     Model model = ModelFactory.createDefaultModel() ;
     model.setNsPrefix("dbp","http://dbpedia.org/resource/");
     boaPath = "";
@@ -64,10 +65,16 @@ public class App {
     System.out.println("Pfad des BOA-Indexes eingeben: ");
     boaPath = br.readLine();
     boaPath = boaPath.replace("\"", "");//if given path string contains "-characters
-    System.out.println("Bitte Text eingeben und Entertaste druecken: ");
-    String s = br.readLine();
+    System.out.println("Pfad der Text-Datei eingeben: ");
+    filePath = br.readLine();
+    filePath = filePath.replace("\"", "");//if given path string contains "-characters
+    String s = new Scanner(new File(filePath)).useDelimiter("\\Z").next();
     String saetze[] = s.split("\\."); //Split sentences by "."
 
+    Fox fox;
+    SPARQLQuery sparql;
+    LuceneQuery lucene;
+    
     //for each sententence from input...
     for (int i = 0; i < saetze.length; i++) {
       String input = saetze[i];
@@ -76,25 +83,35 @@ public class App {
       relation = "";
       
       //Extract Entities from FOX
-      String entities[] = foxEntityRecognition(input, 1);
-
+      String entities[];
+      fox = new Fox();
+      fox.getEntities(input, 1);
+      entities = fox.entities;
+          
       //SPARQL Queries to get the Class to which the Entities belong
       String classes[] = new String[5];
       HashMap<String, String> mapClassIndividual = new HashMap<String, String>(); //connect entities with their classes
-      classes = sparqleQuery(entities,mapClassIndividual);
-
+      sparql = new SPARQLQuery();
+      sparql.sparqleQuery(entities, mapClassIndividual);
+      classes = sparql.classes;
+      
       //query Lucene BOA-Index for NLR with these Classes in Domain and Range
       System.out.println("Lucene-Query...");
       String[] domains = new String[5];
       String[] ranges = new String[5];
-      domains = luceneQuery(classes,1, input);
-      ranges = luceneQuery(classes,2, input);
+      lucene = new LuceneQuery();
+      lucene.luceneQuery(classes, 1, input, boaPath);
+      domains = lucene.entities;
+      lucene.luceneQuery(classes, 2, input, boaPath);
+      ranges = lucene.entities;
+      
 
       //find location of entities in input-String (indeces)
       String[] nlr_entities = new String[2];
       String nlr_relation = "";
-      nlr_entities = foxEntityRecognition(input, 2);
-     
+      fox.getEntities(input, 2);
+      nlr_entities = fox.entities;
+      
       int x = input.lastIndexOf(nlr_entities[0]);
       int y = input.indexOf(nlr_entities[1]);
 
@@ -133,7 +150,10 @@ public class App {
         for (int l = 0; l < ranges.length; l++){
           if (ranges[l] == null)
             break;
-          relation = getRelation(domains[k],ranges[l], nlr_relation);
+          lucene.getTriple(domains[k],ranges[l], nlr_relation, boaPath);
+          relation = lucene.relation;// getTriple(domains[k],ranges[l], nlr_relation);
+          entityDomain = lucene.entityDomain;
+          entityRange = lucene.entityRange;
         }
       }
       
@@ -154,257 +174,6 @@ public class App {
     }
     System.out.println("\nEctracted RDF-Triples:\n");
     model.write(System.out, "TURTLE");
-  }
-
-  public static String[] foxEntityRecognition(String s, int schalter) throws MalformedURLException {
-
-    IFoxApi fox = new FoxApi();
-
-    fox.setTask(FoxParameter.TASK.NER);
-    fox.setOutputFormat(FoxParameter.OUTPUT.TURTLE);
-    fox.setLang(FoxParameter.LANG.EN);
-    fox.setInput(s);
-
-    FoxResponse response = fox.send();
-
-    //save URIs of entities in String Arrays
-    String[] entities = response.getOutput().split("\n");
-    String results[] = new String[5]; //for up to 5 entities
-    ArrayList<String> result  = new ArrayList<String>();
-
-    //get entities
-    if (schalter == 1){
-      int j = 0;
-      for (int i = 0; i < entities.length; i++){
-        if(entities[i].toLowerCase().contains("dbpedia:") && !entities[i].toLowerCase().contains("prefix")) {
-          result.add("http://dbpedia.org/resource/" + entities[i].substring(entities[i].lastIndexOf(":") + 1).replace(" ", "").replace(";", ""));
-          j++;
-        }
-      }
-
-      //convert ArrayList to Array
-      results = result.toArray(new String[0]); 
-
-      //display results
-      System.out.println("FOX-Input:\n" + response.getInput() + "\n");
-      System.out.println("FOX-Output:");
-      for(int i=0; i < results.length; i++)
-        System.out.println(results[i]);      
-    }
-    //get start and end indices from the entities in input string
-    int beginIndex[] = new int[5]; 
-    int endIndex[] = new int[5];
-
-    if (schalter == 2){
-      int j = 0, k = 0;
-      for (int i = 0; i < entities.length; i++){
-        if(entities[i].contains("beginIndex")){
-          beginIndex[j] = Integer.parseInt(entities[i].substring(indexOf(Pattern.compile("[0-9]+"), entities[i]), entities[i].lastIndexOf("\"")));
-          j++;  
-        }
-        if(entities[i].contains("endIndex")){
-          endIndex[k] = Integer.parseInt(entities[i].substring(indexOf(Pattern.compile("[0-9]+"), entities[i]), entities[i].lastIndexOf("\"")));
-          k++;  
-        }        
-      }
-      j = 0;
-      for(int i = 0; i < beginIndex.length; i++){
-        if (endIndex[i] == 0)
-          break;
-        results[j] = s.substring(beginIndex[i],endIndex[i]);
-        j++;
-      }
-    }
-    return results;
-  }
-  
-  public static int indexOf(Pattern pattern, String s) {
-    Matcher matcher = pattern.matcher(s);
-    return matcher.find() ? matcher.start() : -1;
-  }
-  
-  public static String[] sparqleQuery(String s[],  HashMap<String, String> hmap) {
-
-    String classes[] = new String[5]; //return variable, i.e. http://dbpedia.org/page/Leipzig is a "Place" or "PopulatedPlace"
-    int arrayIndex = 0;
-
-    for (int k = 0; k < s.length; k++){
-      ParameterizedSparqlString qs = new ParameterizedSparqlString(
-          "prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n"
-              + "SELECT ?v \n FROM <http://dbpedia.org>"
-              + "WHERE {\n"
-              + "<" + s[k] + "> "
-              + "rdf:type ?v" 
-              + "\n}"); 
-
-      System.out.println("\nSPARQL-Query:\n" + qs);
-
-      QueryExecution exec = QueryExecutionFactory.sparqlService("http://dbpedia.org/sparql", qs.asQuery());
-      ResultSet results = ResultSetFactory.copyResults(exec.execSelect());
-
-      //csv from ResultSet
-      ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-      ResultSetFormatter.outputAsCSV(outputStream, results);
-
-      //convert csv to String-Array
-      String csv = new String(outputStream.toByteArray());
-      String csvArr[] = csv.split("\n");
-
-      //look for BOA-classes and save in return variable
-      for (int i = 0; i < csvArr.length; i++ ){ 
-        if (csvArr[i].equals("http://dbpedia.org/ontology/Place\r")){
-          System.out.println("?v = " + csvArr[i]);
-          classes[arrayIndex] = csvArr[i].toString().replace("\r", "");
-          hmap.put(classes[arrayIndex], s[k]);
-          arrayIndex++;
-        }
-        if (csvArr[i].equals("http://dbpedia.org/ontology/Person\r")){
-          System.out.println("?v = " + csvArr[i]);
-          classes[arrayIndex] = csvArr[i].toString().replace("\r", "");
-          hmap.put(classes[arrayIndex], s[k]);
-          arrayIndex++;
-        }
-        if (csvArr[i].equals("http://dbpedia.org/ontology/Company\r")){
-          System.out.println("?v = " + csvArr[i]);
-          classes[arrayIndex] = csvArr[i].toString().replace("\r", "");
-          arrayIndex++;
-        }
-        if (csvArr[i].equals("http://dbpedia.org/ontology/Actor\r")){
-          System.out.println("?v = " + csvArr[i]);
-          classes[arrayIndex] = csvArr[i].toString().replace("\r", "");
-          arrayIndex++;
-        }
-        if (csvArr[i].equals("http://dbpedia.org/ontology/Work\r")){
-          System.out.println("?v = " + csvArr[i]);
-          classes[arrayIndex] = csvArr[i].toString().replace("\r", "");
-          arrayIndex++;
-        }
-        if (csvArr[i].equals("http://dbpedia.org/ontology/PopulatedPlace\r")){
-          System.out.println("?v = " + csvArr[i]);
-          classes[arrayIndex] = csvArr[i].toString().replace("\r", "");
-          arrayIndex++;
-        }
-        if (csvArr[i].equals("http://dbpedia.org/ontology/SportsTeam\r")){
-          System.out.println("?v = " + csvArr[i]);
-          classes[arrayIndex] = csvArr[i].toString().replace("\r", "");
-          arrayIndex++;
-        }
-        if (csvArr[i].equals("http://dbpedia.org/ontology/Award\r")){
-          System.out.println("?v = " + csvArr[i]);
-          classes[arrayIndex] = csvArr[i].toString().replace("\r", "");
-          arrayIndex++;
-        }
-        if (csvArr[i].equals("http://dbpedia.org/ontology/City\r")){
-          System.out.println("?v = " + csvArr[i]);
-          classes[arrayIndex] = csvArr[i].toString().replace("\r", "");
-          arrayIndex++;
-        }
-        if (csvArr[i].equals("http://dbpedia.org/ontology/Organisation\r")){
-          System.out.println("?v = " + csvArr[i]);
-          classes[arrayIndex] = csvArr[i].toString().replace("\r", "");
-          arrayIndex++;
-        }
-      }
-      System.out.println("");
-    }
-    return classes;
-  }
-  
-  public static String[] luceneQuery(String entities[], int schalter, String satz) throws IOException, ParseException {
-    
-    File path = new File(boaPath);
-    Directory index = FSDirectory.open(path);
-    
-    String[] returnString = new String[5];
-    Document d;
-    TermQuery q;
-    int j = 0;
-    for (int k=0; k < entities.length; k++){
-      
-      if (entities[k] == null)
-        break;
-      
-      // Query-String
-      String querystr = entities[k]; 
-
-      //Entity in Domain?
-      if(schalter == 1){
-        q = new TermQuery(new Term("domain", querystr));
-        d = queryParser(q, index, satz);
-        if (d != null) {
-          returnString[j] = d.get("domain");
-          j++;
-        }
-      }
-      //Entity in Range?
-      if(schalter == 2) {
-        q = new TermQuery(new Term("range", querystr));
-        d = queryParser(q, index, satz);
-        try{
-          returnString[j] = d.get("range");
-          j++;     } catch(Exception e){}
-      }
-    }  
-    return returnString;
-  }
-  
-  public static Document queryParser(TermQuery q, Directory index, String satz) throws IOException, ParseException, NullPointerException {
-
-    // search
-    int hitsPerPage = 10;
-    IndexReader reader = DirectoryReader.open(index);
-    IndexSearcher searcher = new IndexSearcher(reader);
-    TopDocs docs = searcher.search(q, hitsPerPage);
-    ScoreDoc[] hits = docs.scoreDocs;
-
-    //display results
-    Document d = null;
-    for (int i = 0; i < hits.length; ++i) {
-      int docId = hits[i].doc;
-      d = searcher.doc(docId);
-    }
-
-    reader.close();
-
-    return d;
-  }
-  
-  public static String getRelation(String domain, String range, String nlr_relation) throws IOException, ParseException{
-
-    Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_47);
-    File path = new File(boaPath);
-    Directory index = FSDirectory.open(path);    
-    // Query 
-    MultiFieldQueryParser queryParser = new MultiFieldQueryParser(Version.LUCENE_47, new String[] {"domain","nlr-no-var","range"}, analyzer);
-    Query q = queryParser.parse(Version.LUCENE_47, new String[] {domain,nlr_relation,range}, new String[] {"domain","nlr-no-var","range"}, analyzer);
-    int hitsPerPage = 10;
-    IndexReader reader = DirectoryReader.open(index);
-    IndexSearcher searcher = new IndexSearcher(reader);
-    TopDocs docs = searcher.search(q, hitsPerPage);
-    ScoreDoc[] hits = docs.scoreDocs;
-
-    List<Double> score = new ArrayList<Double>();//save variable number of scores
-    HashMap<Double, String> relations_uri = new HashMap<Double, String>();//key-value pair: score-relation
-
-    //display results
-    Document d = null;
-    for (int i = 0; i < hits.length; ++i) {
-      int docId = hits[i].doc;
-      d = searcher.doc(docId);
-      if (nlr_relation.toLowerCase().contains(d.get("nlr-no-var").toLowerCase())){ //d.get("nlr-no-var").toLowerCase().contains(nlr_relation.toLowerCase())
-        score.add(Double.parseDouble(d.get("SUPPORT_NUMBER_OF_PAIRS_LEARNED_FROM")));
-        relations_uri.put(Double.parseDouble(d.get("SUPPORT_NUMBER_OF_PAIRS_LEARNED_FROM")), d.get("uri"));
-        entityDomain = d.get("domain");
-        entityRange = d.get("range");
-      }
-    }
-
-
-    reader.close();
-
-    //return URI with max score
-    return relations_uri.get(Collections.max(score)).toString();
-
   }
 
 }
