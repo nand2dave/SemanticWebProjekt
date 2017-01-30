@@ -68,7 +68,7 @@ public class App {
     System.out.println("Pfad der Text-Datei eingeben: ");
     filePath = br.readLine();
     filePath = filePath.replace("\"", "");//if given path string contains "-characters
-    String s = new Scanner(new File(filePath)).useDelimiter("\\Z").next();
+    String s = new Scanner(new File(filePath)).useDelimiter("\\Z").next();//get text from text file
     String saetze[] = s.split("\\."); //Split sentences by "."
 
     Fox fox;
