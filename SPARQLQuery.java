@@ -97,7 +97,7 @@ public class SPARQLQuery {
       }
       System.out.println("");
     }
-    //return classes;
+   
   }
 
 }
