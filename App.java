@@ -54,14 +54,14 @@ public class App {
   public static String boaPath, filePath;
   
   public static void main(String[] a) throws Exception {
-    
+
     String entityDomain, entityRange, relation;
-    
+
     //initializations for RDF output...
     Model model = ModelFactory.createDefaultModel() ;
     model.setNsPrefix("dbp","http://dbpedia.org/resource/");
     boaPath = "";
-    
+
     //get user input
     BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
     System.out.println("Pfad des BOA-Indexes eingeben: ");
@@ -76,104 +76,118 @@ public class App {
     Fox fox;
     SPARQLQuery sparql;
     LuceneQuery lucene;
-    
+
     //for each sententence from input...
     for (int i = 0; i < saetze.length; i++) {
-      String input = saetze[i];
-      entityDomain = "";
-      entityRange = "";
-      relation = "";
-      
-      //Extract Entities from FOX
-      String entities[];
-      fox = new Fox();
-      fox.getEntities(input, 1);
-      entities = fox.entities;
-          
-      //SPARQL Queries to get the Class to which the Entities belong
-      String classes[] = new String[5];
-      HashMap<String, String> mapClassIndividual = new HashMap<String, String>(); //connect entities with their classes
-      sparql = new SPARQLQuery();
-      sparql.sparqleQuery(entities, mapClassIndividual);
-      classes = sparql.classes;
-      
-      //query Lucene BOA-Index for NLR with these Classes in Domain and Range
-      System.out.println("Lucene-Query...");
-      String[] domains = new String[5];
-      String[] ranges = new String[5];
-      lucene = new LuceneQuery();
-      lucene.luceneQuery(classes, 1, input, boaPath);
-      domains = lucene.entities;
-      lucene.luceneQuery(classes, 2, input, boaPath);
-      ranges = lucene.entities;
-      
 
-      //find location of entities in input-String (indeces)
-      String[] nlr_entities = new String[2];
-      String nlr_relation = "";
-      fox.getEntities(input, 2);
-      nlr_entities = fox.entities;
-      
-      int x = input.lastIndexOf(nlr_entities[0]);
-      int y = input.indexOf(nlr_entities[1]);
+      try {
+        String input = saetze[i];
+        if (input.startsWith(" "))
+          input = input.substring(1);
+        entityDomain = "";
+        entityRange = "";
+        relation = "";
 
-      if (x > y){
-        int z;
-        z = x;
-        x = y;
-        y = z;
-      }
+        //Extract Entities from FOX
+        String entities[];
+        fox = new Fox();
+        fox.getEntities(input, 1);
+        entities = fox.entities;
 
-      //get character string between entities in sentence
-      nlr_relation = input.substring(x,y).replace(nlr_entities[0], "").replace(nlr_entities[1], "");
-      String test[] = new String[1];
-      test[0]=nlr_relation;
+        //SPARQL Queries to get the Class to which the Entities belong
+        String classes[] = new String[5];
+        HashMap<String, String> mapClassIndividual = new HashMap<String, String>(); //connect entities with their classes
+        sparql = new SPARQLQuery();
+        sparql.sparqleQuery(entities, mapClassIndividual);
+        classes = sparql.classes;
 
-      //output extracted RDF predicate
-      //BOA contains wrong order of domain and range for birthplace and deathplace predicate...
-      boolean boaBug = false;
-      for (String j : domains){
-        if (j == null)
-          break;
-        if (j.toLowerCase().contains("place")){
-          //change domain and range
+        //query Lucene BOA-Index for NLR with these Classes in Domain and Range
+        System.out.println("Lucene-Query...");
+        String[] domains = new String[5];
+        String[] ranges = new String[5];
+        lucene = new LuceneQuery();
+        lucene.luceneQuery(classes, 1, input, boaPath);
+        domains = lucene.entities;
+        lucene.luceneQuery(classes, 2, input, boaPath);
+        ranges = lucene.entities;
+
+
+        //find location of entities in input-String (indeces)
+        String[] nlr_entities = new String[2];
+        String nlr_relation = "";
+        fox.getEntities(input, 2);
+        nlr_entities = fox.entities;
+
+        int x = input.lastIndexOf(nlr_entities[0]);
+        int y = input.indexOf(nlr_entities[1]);
+
+        if (x > y){
+          int z;
+          z = x;
+          x = y;
+          y = z;
+        }
+
+        //get character string between entities in sentence
+        nlr_relation = input.substring(x,y).replace(nlr_entities[0], "").replace(nlr_entities[1], "");
+        String test[] = new String[1];
+        test[0]=nlr_relation;
+
+        //output extracted RDF predicate
+        //BOA contains wrong order of domain and range for birthplace and deathplace predicate...
+        boolean boaBug = false;
+        for (String j : domains){
+          if (j == null)
+            break;
+          if (j.toLowerCase().contains("place")){
+            //change domain and range
+            String[] z;
+            z = ranges.clone();
+            ranges = Arrays.copyOfRange(domains, 0, domains.length); 
+            domains = z;
+            boaBug = true;
+          }
+
+        }
+
+        for (int k = 0; k < domains.length; k++){
+          if (domains[k] == null)
+            break;
+          for (int l = 0; l < ranges.length; l++){
+            if (ranges[l] == null)
+              break;
+            lucene.getTriple(domains[k],ranges[l], nlr_relation, boaPath);
+            relation = lucene.relation;// getTriple(domains[k],ranges[l], nlr_relation);
+            entityDomain = lucene.entityDomain;
+            entityRange = lucene.entityRange;
+          }
+        }
+
+        if (boaBug == true){
+          //change domain and range back...
           String[] z;
           z = ranges.clone();
           ranges = Arrays.copyOfRange(domains, 0, domains.length); 
-          domains = z;
-          boaBug = true;
+          ranges = z;
         }
         
-      }
-       
-      for (int k = 0; k < domains.length; k++){
-        if (domains[k] == null)
-          break;
-        for (int l = 0; l < ranges.length; l++){
-          if (ranges[l] == null)
-            break;
-          lucene.getTriple(domains[k],ranges[l], nlr_relation, boaPath);
-          relation = lucene.relation;// getTriple(domains[k],ranges[l], nlr_relation);
-          entityDomain = lucene.entityDomain;
-          entityRange = lucene.entityRange;
+     
+        com.hp.hpl.jena.rdf.model.Resource subject = model.createResource(mapClassIndividual.get(entityDomain));
+        com.hp.hpl.jena.rdf.model.Resource object = model.createResource(mapClassIndividual.get(entityRange));
+        com.hp.hpl.jena.rdf.model.Property predicate = model.createProperty(relation);
+        if (entityDomain.equals(entityRange)){
+          subject = model.createResource(fox.entities[0]);
+          object = model.createResource(fox.entities[1]);
         }
-      }
-      
-      if (boaBug == true){
-        //change domain and range back...
-        String[] z;
-        z = ranges.clone();
-        ranges = Arrays.copyOfRange(domains, 0, domains.length); 
-        ranges = z;
-      }
+        model.add(subject, predicate, object);
 
-      //output triple as RDF
-      com.hp.hpl.jena.rdf.model.Resource subject = model.createResource(mapClassIndividual.get(entityDomain));
-      com.hp.hpl.jena.rdf.model.Resource object = model.createResource(mapClassIndividual.get(entityRange));
-      com.hp.hpl.jena.rdf.model.Property predicate = model.createProperty(relation);
-      model.add(subject, predicate, object);
-      
+      } catch (Exception e) {
+        // Do nothing
+      }
+      System.out.println("\nDone!\n");
     }
+
+
     System.out.println("\nEctracted RDF-Triples:\n");
     model.write(System.out, "TURTLE");
   }
