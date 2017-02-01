@@ -30,7 +30,7 @@ public class LuceneQuery {
   String entityDomain, entityRange, relation;
 
   
-  public void luceneQuery(String entities[], int schalter, String satz, String boaPath) throws IOException, ParseException {
+  public void luceneQuery(String classes[], int schalter, String satz, String boaPath) throws IOException, ParseException {
     
     File path = new File(boaPath);
     Directory index = FSDirectory.open(path);
@@ -39,13 +39,13 @@ public class LuceneQuery {
     Document d;
     TermQuery q;
     int j = 0;
-    for (int k=0; k < entities.length; k++){
+    for (int k=0; k < classes.length; k++){
       
-      if (entities[k] == null)
+      if (classes[k] == null)
         break;
       
       // Query-String
-      String querystr = entities[k]; 
+      String querystr = classes[k]; 
 
       //Entity in Domain?
       if(schalter == 1){
@@ -62,7 +62,8 @@ public class LuceneQuery {
         d = queryParser(q, index, satz);
         try{
           returnString[j] = d.get("range");
-          j++;     } catch(Exception e){}
+          j++;     
+        } catch(Exception e){}
       }
     }  
     //return returnString;
