@@ -176,8 +176,8 @@ public class App {
         com.hp.hpl.jena.rdf.model.Resource object = model.createResource(mapClassIndividual.get(entityRange));
         com.hp.hpl.jena.rdf.model.Property predicate = model.createProperty(relation);
         if (entityDomain.equals(entityRange)){
-          subject = model.createResource(fox.entities[0]);
-          object = model.createResource(fox.entities[1]);
+          subject = model.createResource("http://dbpedia.org/resource/" + fox.entities[0].replace(" ", "_"));
+          object = model.createResource("http://dbpedia.org/resource/" + fox.entities[1].replace(" ", "_"));
         }
         model.add(subject, predicate, object);
 
