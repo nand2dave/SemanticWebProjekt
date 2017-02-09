@@ -1,4 +1,4 @@
-package SWP.org.aksw.iConnect;
+package org.aksw.swp.iconnect;
 
 
 import java.io.BufferedReader;
@@ -93,7 +93,10 @@ public class App {
         fox = new Fox();
         fox.getEntities(input, 1);
         entities = fox.entities;
-
+        //ignore sentences with entities that are not contained in DBpedia
+        if (entities.length <= 1)
+          continue;
+        
         //SPARQL Queries to get the Class to which the Entities belong
         String classes[] = new String[5];
         HashMap<String, String> mapClassIndividual = new HashMap<String, String>(); //connect entities with their classes
@@ -165,10 +168,16 @@ public class App {
 
         if (boaBug == true){
           //change domain and range back...
-          String[] z;
+         /* String[] z;
           z = ranges.clone();
           ranges = Arrays.copyOfRange(domains, 0, domains.length); 
           ranges = z;
+          */
+          String z;
+          z = entityRange;
+          entityRange = entityDomain;
+          entityDomain = z;
+          
         }
         
      
