@@ -1,4 +1,5 @@
-package SWP.org.aksw.iConnect;
+package org.aksw.swp.iconnect;
+
 
 import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
